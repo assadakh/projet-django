@@ -1,48 +1,69 @@
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.views import APIView
 import subprocess
 import time
-
-@api_view(['GET'])
-def getDataNmap(request):
-    ip = "192.168.1.1"
-    commande = subprocess.run(["nmap", ip], capture_output=True, text=True)
-    resultat = commande.stdout.splitlines()
-    return Response({"ip" : ip, "result" : resultat})
+from .serializers import NmapScanSerializer, WhatWebResultSerializer, ZapScanSerializer
 
 
-@api_view(['GET'])
-def getDataZap(request):
-    url = "http://testphp.vulnweb.com"
-    apikey = "80mb2scd3nqge4vnbu7midf1q1"
-        
-    # Lancement d'un scan Spider
-    spider_url = f"http://127.0.0.1:8090/JSON/spider/action/scan/?apikey={apikey}&url={url}"
-    ps_spider = f'Invoke-WebRequest -Uri "{spider_url}" -UseBasicParsing'
-    subprocess.run(["powershell", "-Command", ps_spider], capture_output=True, text=True)
+class nmapscan(APIView):
+    def get(self, request):
+        ip = "192.168.1.1"
+        commande = subprocess.run(["nmap", ip], capture_output=True, text=True)
 
-    # On attend quelques secondes que le Spider découvre les pages
-    time.sleep(5)
+        # Collecte du résultat et suppression des lignes vides/blanches
+        resultat = [line for line in commande.stdout.splitlines() if line.strip()]
 
-    # Lancer un scan actif (ascan)
-    ascan_url = f"http://127.0.0.1:8090/JSON/ascan/action/scan/?apikey={apikey}&url={url}"
-    ps_ascan = f'Invoke-WebRequest -Uri "{ascan_url}" -UseBasicParsing'
-    commande = subprocess.run(["powershell", "-Command", ps_ascan], capture_output=True, text=True)
-    resultat = commande.stdout.splitlines()
-
-    return Response({"url" : url, "result" : resultat})
+        # Serialization de la variable data et si elle est affiche Response celle-ci
+        data = {"ip": ip, "result": resultat}
+        serializer = NmapScanSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
 
 
-@api_view(['GET'])
-def getDataWhatweb(request):
-    url = "http://testphp.vulnweb.com"
-    # Commande stockée dans une variable et effectuée
-    commande = subprocess.run(["wsl", "-d", "Ubuntu", "whatweb", url], capture_output=True, text=True)
-    # Résultat de la commande stocké
-    resultat = commande.stdout.splitlines()
+class whatwebscan(APIView):
+    def get(self, request):
+        url = "http://testphp.vulnweb.com"
+        commande = subprocess.run(
+            ["wsl", "-d", "Ubuntu", "whatweb", url], capture_output=True, text=True
+        )
 
-    # Retour de l'affichage
-    return Response({"url" : url, "result" : resultat})
+        # Collecte du résultat et suppression des lignes vides/blanches
+        resultat = [line for line in commande.stdout.splitlines() if line.strip()]
+
+        # Serialization de la variable data et si elle est affiche Response celle-ci
+        data = {"url": url, "result": resultat}
+        serializer = WhatWebResultSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
+
+
+class zapscan(APIView):
+    def get(self, request):
+        url = "http://testphp.vulnweb.com"
+        apikey = "80mb2scd3nqge4vnbu7midf1q1"
+
+        # Lancement du spider
+        spider_url = f"http://127.0.0.1:8090/JSON/spider/action/scan/?apikey={apikey}&url={url}"
+        ps_spider = f'Invoke-WebRequest -Uri "{spider_url}" -UseBasicParsing'
+        subprocess.run(["powershell", "-Command", ps_spider], capture_output=True, text=True)
+
+        time.sleep(5)
+
+        # Lancement du scan actif
+        ascan_url = f"http://127.0.0.1:8090/JSON/ascan/action/scan/?apikey={apikey}&url={url}"
+        ps_ascan = f'Invoke-WebRequest -Uri "{ascan_url}" -UseBasicParsing'
+        commande = subprocess.run(["powershell", "-Command", ps_ascan], capture_output=True, text=True)
+
+        # Collecte du résultat et suppression des lignes vides/blanches
+        resultat = [line for line in commande.stdout.splitlines() if line.strip()]
+
+        # Serialization de la variable data et si elle est affiche Response celle-ci
+        data = {"url": url, "result": resultat}
+        serializer = ZapScanSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
+
+
 
 
 
