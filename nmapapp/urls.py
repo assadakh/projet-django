@@ -3,7 +3,7 @@ from . import views
 
 
 urlpatterns = [
-    path('nmapscan/', views.nmapscan.as_view()),
-    path('whatwebscan/', views.whatwebscan.as_view()),
-    path('zapscan/', views.zapscan.as_view()),
+    path('nmapscan/', views.NmapScanAPIView.as_view(), name='nmap-scan'),
+    path('whatwebscan/', views.WhatWebScanAPIView.as_view(), name='whatweb-scan'),
+    path('zapscan/', views.ZapScanAPIView.as_view(), name='zap-scan'),
 ]

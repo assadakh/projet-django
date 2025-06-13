@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Scan ZAP</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f8;
+            padding: 40px;
+            color: #2c3e50;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 28px;
+            color: #34495e;
+        }
+
+        form {
+            max-width: 500px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .table-container {
+            max-width: 1000px;
+            margin: auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        thead {
+            background-color: #2c3e50;
+            color: #ffffff;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+            font-size: 14px;
+        }
+
+        td {
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        th:nth-child(1), td:nth-child(1) {
+            width: 20%;
+        }
+
+        th:nth-child(2), td:nth-child(2),
+        th:nth-child(3), td:nth-child(3) {
+            width: 10%;
+        }
+
+        th:nth-child(4), td:nth-child(4),
+        th:nth-child(5), td:nth-child(5),
+        th:nth-child(6), td:nth-child(6) {
+            width: 20%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Scan ZAP</h1>
+
+    <!-- Formulaire de saisie URL -->
+    <form method="get">
+        <input type="text" name="url" placeholder="Entrez une URL à scanner" value="{{ url }}">
+        <button type="submit">Lancer le scan</button>
+    </form>
+
+    <!-- Affichage de l'erreur -->
+    {% if error %}
+    <div class="error-message">{{ error }}</div>
+    {% endif %}
+
+    <!-- Affichage du tableau si scans présents -->
+    {% if scans %}
+    <div class="table-container">
+        <h2 style="text-align:center;">Résultats ZAP pour : {{ url }}</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Alert</th>
+                    <th>Risque</th>
+                    <th>Confiance</th>
+                    <th>Description</th>
+                    <th>Solution</th>
+                    <th>Référence</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scan in scans %}
+                <tr>
+                    <td>{{ scan.alert }}</td>
+                    <td>{{ scan.risk }}</td>
+                    <td>{{ scan.confidence }}</td>
+                    <td>{{ scan.description }}</td>
+                    <td>{{ scan.solution }}</td>
+                    <td>{{ scan.reference }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</body>
+</html>

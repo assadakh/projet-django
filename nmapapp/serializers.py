@@ -1,35 +1,25 @@
 from rest_framework import serializers
+from .models import ScanNmap, ScanWhatweb, ScanZap
 
 
-# Serializer pour Nmap : liste de dicts avec port, state et service
-class PortInfoSerializer(serializers.Serializer):
-    port = serializers.CharField()
-    state = serializers.CharField()
-    service = serializers.CharField()
+# Serializer pour Nmap 
+class NmapScanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScanNmap
+        fields = ['ip', 'port', 'state', 'service']
 
 
-class NmapScanSerializer(serializers.Serializer):
-    ip = serializers.IPAddressField()
-    result = serializers.ListField(child=PortInfoSerializer())
+# Serializer pour WhatWeb
+class WhatWebResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScanWhatweb
+        fields = ['url', 'result']
 
 
-# Serializer pour WhatWeb : liste de chaînes (des technologies détectées)
-class WhatWebResultSerializer(serializers.Serializer):
-    url = serializers.URLField()
-    result = serializers.ListField(child=serializers.CharField())
+# Serializer pour ZAP  
+class ZAPResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScanZap
+        fields = ['url', 'alert', 'risk', 'confidence', 'description', 'solution', 'reference']
 
-
-# Serializer pour ZAP : liste d’alertes, on les décrit simplement comme des dicts génériques
-class ZAPAlertSerializer(serializers.Serializer):
-    alert = serializers.CharField()
-    name = serializers.CharField(required=False)
-    risk = serializers.CharField(required=False)
-    confidence = serializers.CharField(required=False)
-    description = serializers.CharField(required=False)
-    solution = serializers.CharField(required=False)
-    reference = serializers.CharField(required=False)
-
-class ZAPResultSerializer(serializers.Serializer):
-    url = serializers.URLField()
-    result = serializers.ListField(child=serializers.DictField())
 

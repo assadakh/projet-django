@@ -26,7 +26,6 @@ def parse_nmap_output(output_lines):
                     "state": parts[1],
                     "service": parts[2]
                 })
-
     return results
 
 
