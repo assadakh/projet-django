@@ -1,19 +1,31 @@
 from rest_framework.views import APIView
 from django.shortcuts import render
+from .models import ScanNmap, ScanWhatweb, ScanZap
+from .serializers import NmapScanSerializer, WhatWebResultSerializer, ZAPResultSerializer
+from .parsers import parse_nmap_output, parse_whatweb_output, parse_json_output
+
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 import subprocess
 import time
 import ipaddress
 import requests
-from .models import ScanNmap, ScanWhatweb, ScanZap
-from .serializers import NmapScanSerializer, WhatWebResultSerializer, ZAPResultSerializer
-from .parsers import parse_nmap_output, parse_whatweb_output, parse_json_output
 
 
+
+
+
+### NMAPVIEW
 class NmapScanAPIView(APIView):
     def get(self, request):
         ip = request.GET.get("ip")  
+
+        if not ip:
+            return render(request, "nmap_scan.html", {
+                "error": "Aucune IP fournie.",
+                "scans": [],
+                "url": ""
+            })
         
         # ✅ Validation de l'adresse IP
         try:
@@ -53,11 +65,17 @@ class NmapScanAPIView(APIView):
 
 
 
-
+### WHATWEBVIEW
 class WhatWebScanAPIView(APIView):
     def get(self, request):
         url = request.GET.get("url")
 
+        if not url:
+            return render(request, "whatweb_scan.html", {
+                "error": "Aucune URL fournie.",
+                "scans": [],
+                "url": ""
+            })
         
         # ✅ Test la validité de l'URL 
         validate = URLValidator()
@@ -89,7 +107,7 @@ class WhatWebScanAPIView(APIView):
             result_list = serializer.data["result"].split(", ")
             return render(request, "whatweb_scan.html", {
                 "url": url,
-                "result_list": result_list
+                "scans": result_list
             })
 
         # Sinon lance le scan et enregistre
@@ -110,16 +128,25 @@ class WhatWebScanAPIView(APIView):
 
         return render(request, "whatweb_scan.html", {
             "url": url,
-            "result_list": result_list
+            "scans": result_list
         })
 
 
+
+
+### ZAPVIEW
 class ZapScanAPIView(APIView):
     def get(self, request):
         apikey = "80mb2scd3nqge4vnbu7midf1q1"
         url = request.GET.get("url")
 
-
+        if not url:
+            return render(request, "zap_scan.html", {
+                "error": "Aucune URL fournie.",
+                "scans": [],
+                "url": ""
+            })
+        
         # ✅ Test la validité de l'URL 
         validate = URLValidator()
         try:

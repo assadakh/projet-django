@@ -6,21 +6,29 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f8;
+            background-color: #f8f9fa;
             padding: 40px;
             color: #2c3e50;
         }
 
-        h1 {
+        h2 {
             text-align: center;
             margin-bottom: 20px;
-            font-size: 28px;
-            color: #34495e;
+            font-size: 26px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         form {
-            max-width: 500px;
-            margin: 0 auto 30px auto;
+            margin-bottom: 20px;
             display: flex;
             gap: 10px;
         }
@@ -28,42 +36,37 @@
         input[type="text"] {
             flex: 1;
             padding: 10px;
-            font-size: 14px;
             border: 1px solid #ccc;
             border-radius: 6px;
+            font-size: 16px;
         }
 
         button {
             padding: 10px 20px;
-            background-color: #2c3e50;
+            background-color: #3498db;
             color: white;
             border: none;
             border-radius: 6px;
+            font-size: 16px;
             cursor: pointer;
-            font-size: 14px;
+            transition: background-color 0.3s;
         }
 
-        .error-message {
-            color: red;
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .error {
+            color: #e74c3c;
+            margin-bottom: 15px;
             text-align: center;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-
-        .table-container {
-            max-width: 1000px;
-            margin: auto;
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            overflow-x: auto;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            margin-top: 20px;
         }
 
         thead {
@@ -105,48 +108,45 @@
     </style>
 </head>
 <body>
-    <h1>Scan ZAP</h1>
+    <div class="container">
+        <h2>Scan ZAP</h2>
 
-    <!-- Formulaire de saisie URL -->
-    <form method="get">
-        <input type="text" name="url" placeholder="Entrez une URL à scanner" value="{{ url }}">
-        <button type="submit">Lancer le scan</button>
-    </form>
+        <form method="get">
+            <input type="text" name="url" placeholder="Entrez une URL à scanner (ex: http://example.com)" value="{{ url }}">
+            <button type="submit">Lancer le scan</button>
+        </form>
 
-    <!-- Affichage de l'erreur -->
-    {% if error %}
-    <div class="error-message">{{ error }}</div>
-    {% endif %}
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
 
-    <!-- Affichage du tableau si scans présents -->
-    {% if scans %}
-    <div class="table-container">
-        <h2 style="text-align:center;">Résultats ZAP pour : {{ url }}</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Alert</th>
-                    <th>Risque</th>
-                    <th>Confiance</th>
-                    <th>Description</th>
-                    <th>Solution</th>
-                    <th>Référence</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for scan in scans %}
-                <tr>
-                    <td>{{ scan.alert }}</td>
-                    <td>{{ scan.risk }}</td>
-                    <td>{{ scan.confidence }}</td>
-                    <td>{{ scan.description }}</td>
-                    <td>{{ scan.solution }}</td>
-                    <td>{{ scan.reference }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% if scans %}
+            <h2>Résultats ZAP pour : {{ url }}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Alert</th>
+                        <th>Risque</th>
+                        <th>Confiance</th>
+                        <th>Description</th>
+                        <th>Solution</th>
+                        <th>Référence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in scans %}
+                        <tr>
+                            <td>{{ scan.alert }}</td>
+                            <td>{{ scan.risk }}</td>
+                            <td>{{ scan.confidence }}</td>
+                            <td>{{ scan.description }}</td>
+                            <td>{{ scan.solution }}</td>
+                            <td>{{ scan.reference }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
     </div>
-    {% endif %}
 </body>
 </html>
