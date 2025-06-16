@@ -94,11 +94,11 @@
             <div class="error">{{ error }}</div>
         {% endif %}
 
-        {% if result_list %}
+        {% if scans %}
             <h2>Résultats pour {{ url }}</h2>
             <ul>
-                {% for plugin in result_list %}
-                    <li>{{ plugin }}</li>
+                {% for scan in scans %}
+                    <li>{{ scan }}</li>
                 {% endfor %}
             </ul>
         {% endif %}

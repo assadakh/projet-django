@@ -27,7 +27,6 @@ class NmapScanAPIView(APIView):
                 "url": ""
             })
         
-        # ✅ Validation de l'adresse IP
         try:
             ipaddress.ip_address(ip)
         except ValueError:
@@ -37,16 +36,31 @@ class NmapScanAPIView(APIView):
                 "ip": ip
             })
         
-        scans_existants = ScanNmap.objects.filter(ip=ip)
-        if scans_existants.exists():
-            serializer = NmapScanSerializer(scans_existants, many=True)
+        scan_exist = ScanNmap.objects.filter(ip=ip)
+        if scan_exist.exists():
+            serializer = NmapScanSerializer(scan_exist, many=True)
             return render(request, "nmap_scan.html", {"ip": ip, "scans": serializer.data})
 
+        ScanNmap.objects.filter(ip=ip).delete()
+
         commande = subprocess.run(["nmap", ip], capture_output=True, text=True)
+
+        if commande.returncode != 0:
+            return render(request, "nmap_scan.html", {
+                "error": "Le scan Nmap a échoué. Vérifiez que Nmap est installé et que l’IP est accessible.",
+                "scans": [],
+                "ip": ip
+            })
+
         brut_output = [line for line in commande.stdout.splitlines() if line.strip()]
         resultat = parse_nmap_output(brut_output)
 
-        ScanNmap.objects.filter(ip=ip).delete()
+        if not resultat:
+            return render(request, "nmap_scan.html", {
+                "error": "Aucun port détecté ou tous les ports sont filtrés.",
+                "scans": [],
+                "ip": ip
+            })
 
         scan_objects = [
             ScanNmap(
@@ -60,8 +74,8 @@ class NmapScanAPIView(APIView):
         ScanNmap.objects.bulk_create(scan_objects)
 
         scans = ScanNmap.objects.filter(ip=ip)
-        serializer = NmapScanSerializer(scans, many=True)
-        return render(request, "nmap_scan.html", {"ip": ip, "scans": serializer.data})
+        return render(request, "nmap_scan.html", {"ip": ip, "scans": scans})
+
 
 
 
@@ -82,7 +96,7 @@ class WhatWebScanAPIView(APIView):
         try:
             validate(url)
         except ValidationError:
-            return render(request, "zap_scan.html", {
+            return render(request, "whatweb_scan.html", {
                 "error": "Format d'URL invalide.",
                 "scans": [],
                 "url": url
@@ -93,7 +107,7 @@ class WhatWebScanAPIView(APIView):
             response = requests.get(url, timeout=5)
             response.raise_for_status()
         except requests.RequestException:
-            return render(request, "zap_scan.html", {
+            return render(request, "whatweb_scan.html", {
                 "error": "L'URL n'est pas accessible (erreur réseau ou code HTTP non valide).",
                 "scans": [],
                 "url": url
@@ -170,10 +184,10 @@ class ZapScanAPIView(APIView):
             })
         
         # Vérifie si un scan existe déjà en base pour cette URL   
-        scans_existants = ScanZap.objects.filter(url=url)
-        if scans_existants.exists():
+        scan_exist = ScanZap.objects.filter(url=url)
+        if scan_exist.exists():
             # Si oui, on récupère directement les données existantes
-            serializer = ZAPResultSerializer(scans_existants, many=True)
+            serializer = ZAPResultSerializer(scan_exist, many=True)
             return render(request, "zap_scan.html", {"url": url, "scans": serializer.data})
 
         subprocess.run(
