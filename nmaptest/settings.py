@@ -145,5 +145,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+
 # Indique à Django où rediriger les utilisateurs non authentifiés lorsqu'ils tentent d'accéder à une page protégée par @login_required
 LOGIN_URL = '/login'

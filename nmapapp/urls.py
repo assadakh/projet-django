@@ -3,6 +3,7 @@ from . import views
 from .views import dashboard, login_view
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+
 urlpatterns = [
     # 🔐 Authentification JWT
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

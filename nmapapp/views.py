@@ -57,6 +57,7 @@ def dashboard(request):
 
 
 
+
 ### Enregistrement d'utilisateur
 class RegisterAPIView(APIView):
     permission_classes = [AllowAny]
