@@ -1,5 +1,5 @@
 from rest_framework.views import APIView
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
@@ -8,12 +8,53 @@ from .serializers import NmapScanSerializer, WhatWebResultSerializer, ZAPResultS
 from .parsers import parse_nmap_output, parse_whatweb_output, parse_json_output
 
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login, authenticate
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 import subprocess
 import time
 import ipaddress
 import requests
+from django.conf import settings
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
+def register_view(request):
+    return render(request, "register.html")
+
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        if not username or not password:
+            return render(request, "login.html", {'error': 'Veuillez remplir tous les champs'})
+        
+        # Authentifier l'utilisateur pour la session Django
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            # Connecter l'utilisateur dans la session
+            login(request, user)
+            # Générer un token JWT
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            # Passer les tokens au template pour les stocker dans localStorage
+            next_url = request.GET.get('next', '/dashboard/')
+            return render(request, "login.html", {
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'redirect_to': next_url
+            })
+        else:
+            return render(request, "login.html", {'error': 'Nom d\'utilisateur ou mot de passe incorrect'})
+    
+    return render(request, "login.html")
+
+@login_required(login_url='/login')
+def dashboard(request):
+    return render(request, "dashboard.html")
+
 
 
 ### Enregistrement d'utilisateur

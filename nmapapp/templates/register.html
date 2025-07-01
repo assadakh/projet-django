@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inscription</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
+            background-color: #f4f4f9;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            width: 100%;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            text-align: center;
+        }
+        .success {
+            color: green;
+            text-align: center;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            margin-top: 10px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h2>Inscription</h2>
+    <input type="text" id="username" placeholder="Nom d'utilisateur">
+    <input type="password" id="password" placeholder="Mot de passe">
+    <button onclick="register()">S'inscrire</button>
+    <p><a href="/login">Déjà un compte ? Connectez-vous</a></p>
+    <p id="message" class="error"></p>
+
+    <script>
+        async function register() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+
+            if (!username || !password) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = 'Veuillez remplir tous les champs';
+                return;
+            }
+
+            if (username.length < 3 || password.length < 6) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = 'Le nom d\'utilisateur doit avoir au moins 3 caractères et le mot de passe au moins 6';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/register/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    messageDiv.className = 'success';
+                    messageDiv.textContent = 'Inscription réussie ! Redirection vers la connexion...';
+                    setTimeout(() => { window.location.href = '/login'; }, 2000);
+                } else {
+                    messageDiv.className = 'error';
+                    messageDiv.textContent = data.error || 'Erreur lors de l\'inscription';
+                }
+            } catch (error) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = 'Erreur réseau. Veuillez réessayer.';
+            }
+        }
+    </script>
+</body>
+</html>

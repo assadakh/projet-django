@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'nmapapp',
 ]
 
@@ -143,3 +144,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Indique à Django où rediriger les utilisateurs non authentifiés lorsqu'ils tentent d'accéder à une page protégée par @login_required
+LOGIN_URL = '/login'
