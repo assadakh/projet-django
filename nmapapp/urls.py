@@ -18,4 +18,8 @@ urlpatterns = [
     path('dashboard/', dashboard, name='dashboard'),
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register_page'),
+
+    # Nouvelles URLs pour l'historique
+    path('api/scan_history/', views.ScanHistoryAPIView.as_view(), name='scan_history'),
+    path('api/delete_scan/', views.DeleteScanAPIView.as_view(), name='delete_scan'),
 ]

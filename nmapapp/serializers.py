@@ -1,25 +1,26 @@
 from rest_framework import serializers
 from .models import ScanNmap, ScanWhatweb, ScanZap
 
-
-# Serializer pour Nmap 
 class NmapScanSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScanNmap
-        fields = ['ip', 'port', 'state', 'service']
+        fields = ['id', 'ip', 'port', 'state', 'service', 'date_scan']
+        extra_kwargs = {
+            'date_scan': {'format': '%Y-%m-%dT%H:%M:%S.%f%z'}  # Inclut microsecondes et fuseau
+        }
 
-
-# Serializer pour WhatWeb
 class WhatWebResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScanWhatweb
-        fields = ['url', 'result']
+        fields = ['id', 'url', 'result', 'date_scan']
+        extra_kwargs = {
+            'date_scan': {'format': '%Y-%m-%dT%H:%M:%S.%f%z'}
+        }
 
-
-# Serializer pour ZAP  
 class ZAPResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScanZap
-        fields = ['url', 'alert', 'risk', 'confidence', 'description', 'solution', 'reference']
-
-
+        fields = ['id', 'url', 'alert', 'name', 'risk', 'confidence', 'description', 'solution', 'reference', 'date_scan']
+        extra_kwargs = {
+            'date_scan': {'format': '%Y-%m-%dT%H:%M:%S.%f%z'}
+        }

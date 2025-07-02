@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from django.shortcuts import render, redirect
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.core.paginator import Paginator
 from rest_framework import status
 from .models import ScanNmap, ScanWhatweb, ScanZap
 from .serializers import NmapScanSerializer, WhatWebResultSerializer, ZAPResultSerializer
@@ -56,6 +57,84 @@ def dashboard(request):
     return render(request, "dashboard.html")
 
 
+class ScanHistoryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        scan_type = request.GET.get('type')
+        page = request.GET.get('page', 1)
+        limit = request.GET.get('limit', 10)
+        search = request.GET.get('search', '')
+
+        try:
+            page = int(page)
+            limit = int(limit)
+        except ValueError:
+            return Response({"error": "Page ou limite invalide."}, status=400)
+
+        if scan_type == 'nmap':
+            scans = ScanNmap.objects.filter(ip__icontains=search).order_by('-date_scan')
+            serializer_class = NmapScanSerializer
+        elif scan_type == 'whatweb':
+            scans = ScanWhatweb.objects.filter(url__icontains=search).order_by('-date_scan')
+            serializer_class = WhatWebResultSerializer
+        elif scan_type == 'zap':
+            scans = ScanZap.objects.filter(url__icontains=search).order_by('-date_scan')
+            serializer_class = ZAPResultSerializer
+        else:
+            return Response({"error": "Type de scan invalide."}, status=400)
+
+        paginator = Paginator(scans, limit)
+        if page > paginator.num_pages:
+            page = paginator.num_pages
+        if page < 1:
+            page = 1
+
+        page_scans = paginator.page(page)
+        serializer = serializer_class(page_scans, many=True)
+
+        return Response({
+            "scans": serializer.data,
+            "total": paginator.count,
+            "pages": paginator.num_pages,
+            "current_page": page
+        })
+
+class DeleteScanAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        scan_type = request.GET.get('type')
+        ip = request.GET.get('ip')
+        url = request.GET.get('url')
+
+        if not scan_type or not (ip or url):
+            return Response({"error": "Type de scan et IP/URL requis."}, status=400)
+
+        try:
+            if scan_type == 'nmap':
+                if not ip:
+                    return Response({"error": "IP requis pour Nmap."}, status=400)
+                scans = ScanNmap.objects.filter(ip=ip)
+            elif scan_type == 'whatweb':
+                if not url:
+                    return Response({"error": "URL requis pour WhatWeb."}, status=400)
+                scans = ScanWhatweb.objects.filter(url=url)
+            elif scan_type == 'zap':
+                if not url:
+                    return Response({"error": "URL requis pour ZAP."}, status=400)
+                scans = ScanZap.objects.filter(url=url)
+            else:
+                return Response({"error": "Type de scan invalide."}, status=400)
+
+            if not scans.exists():
+                return Response({"error": "Aucun scan trouvé."}, status=404)
+
+            scans.delete()
+            return Response({"message": "Scans supprimés avec succès."}, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+        
 
 
 ### Enregistrement d'utilisateur

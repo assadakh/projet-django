@@ -44,7 +44,15 @@
         button:hover {
             background-color: #0056b3;
         }
-        div[id$="Results"] {
+        .logout-button {
+            background-color: #dc3545;
+            float: right;
+            margin-bottom: 20px;
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
+        div[id$="Results"], div[id$="History"] {
             margin-top: 10px;
             padding: 10px;
             border: 1px solid #ddd;
@@ -57,9 +65,48 @@
         .error {
             color: red;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .pagination {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .pagination button {
+            margin: 0 5px;
+        }
+        .scan-details {
+            display: none;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .scan-row {
+            cursor: pointer;
+        }
+        .scan-row:hover {
+            background-color: #f0f0f0;
+        }
+        .search-container {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
+    <button class="logout-button" onclick="logout()">Déconnexion</button>
     <h1>Dashboard Pentest</h1>
 
     <!-- Section Nmap -->
@@ -69,8 +116,15 @@
         <button onclick="launchScan('nmap', 'ipInput', 'nmapResults', '/api/nmapscan/')">Lancer Nmap</button>
         <div id="nmapLoading" class="loading" style="display: none;">Chargement...</div>
         <div id="nmapResults"></div>
+        <p></p>
+        <div class="search-container">
+            <label for="nmapSearch">Rechercher IP :</label>
+            <input type="text" id="nmapSearch" placeholder="Ex: 192.168.1.1" oninput="searchScans('nmap')" />
+        </div>
+        <div id="nmapHistoryLoading" class="loading" style="display: none;">Chargement de l'historique...</div>
+        <div id="nmapHistory"></div>
     </section>
-
+    
     <!-- Section WhatWeb -->
     <section>
         <label for="urlWhatWebInput">URL pour WhatWeb :</label>
@@ -78,6 +132,13 @@
         <button onclick="launchScan('whatweb', 'urlWhatWebInput', 'whatwebResults', '/api/whatwebscan/')">Lancer WhatWeb</button>
         <div id="whatwebLoading" class="loading" style="display: none;">Chargement...</div>
         <div id="whatwebResults"></div>
+        <p></p>
+        <div class="search-container">
+            <label for="whatwebSearch">Rechercher URL :</label>
+            <input type="text" id="whatwebSearch" placeholder="https://exemple.com" oninput="searchScans('whatweb')" />
+        </div>
+        <div id="whatwebHistoryLoading" class="loading" style="display: none;">Chargement de l'historique...</div>
+        <div id="whatwebHistory"></div>
     </section>
 
     <!-- Section ZAP -->
@@ -87,6 +148,13 @@
         <button onclick="launchScan('zap', 'urlZapInput', 'zapResults', '/api/zapscan/')">Lancer ZAP</button>
         <div id="zapLoading" class="loading" style="display: none;">Chargement...</div>
         <div id="zapResults"></div>
+        <p></p>
+        <div class="search-container">
+            <label for="zapSearch">Rechercher URL :</label>
+            <input type="text" id="zapSearch" placeholder="https://exemple.com" oninput="searchScans('zap')" />
+        </div>
+        <div id="zapHistoryLoading" class="loading" style="display: none;">Chargement de l'historique...</div>
+        <div id="zapHistory"></div>
     </section>
 
     <script>
@@ -107,6 +175,12 @@
                 console.error('Erreur lors du rafraîchissement du token:', error);
                 return false;
             }
+        }
+
+        function logout() {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            window.location.href = '/login';
         }
 
         function isValidIP(ip) {
@@ -141,10 +215,8 @@
                 });
 
                 if (resp.status === 401) {
-                    // Tenter de rafraîchir le token
                     const refreshed = await refreshToken();
                     if (refreshed) {
-                        // Réessayer la requête avec le nouveau token
                         resp = await fetch(`${endpoint}?${isIP ? 'ip' : 'url'}=${encodeURIComponent(input)}`, {
                             headers: {
                                 'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
@@ -158,10 +230,18 @@
                 }
 
                 if (!resp.ok) {
-                    throw new Error(`Erreur HTTP ${resp.status}`);
+                    const errorText = await resp.text();
+                    throw new Error(`Erreur HTTP ${resp.status}: ${errorText || 'Aucune information supplémentaire'}`);
                 }
 
-                const data = await resp.json();
+                let data;
+                try {
+                    data = await resp.json();
+                } catch (jsonError) {
+                    const errorText = await resp.text();
+                    throw new Error(`Erreur de parsing JSON: ${jsonError.message}. Réponse brute: ${errorText || 'Vide'}`);
+                }
+
                 loadingDiv.style.display = 'none';
 
                 if (data.error) {
@@ -181,11 +261,217 @@
                 });
                 html += '</ul>';
                 resultsDiv.innerHTML = html;
+
+                // Rafraîchir l'historique après un nouveau scan
+                fetchScanHistory(tool);
             } catch (error) {
                 loadingDiv.style.display = 'none';
                 resultsDiv.innerHTML = `<p class="error">Erreur: ${error.message}</p>`;
             }
         }
+
+        let currentPage = { nmap: 1, whatweb: 1, zap: 1 };
+        const scansPerPage = 10;
+        let allScans = { nmap: [], whatweb: [], zap: [] }; // Cache des scans pour la recherche
+
+        async function fetchScanHistory(type) {
+            const resultsDiv = document.getElementById(`${type}History`);
+            const loadingDiv = document.getElementById(`${type}HistoryLoading`);
+            const searchInput = document.getElementById(`${type}Search`).value.toLowerCase();
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                // Récupérer toutes les pages pour avoir tous les scans
+                let allData = [];
+                let page = 1;
+                let hasMore = true;
+                while (hasMore) {
+                    let resp = await fetch(`/api/scan_history/?type=${type}&page=${page}&limit=${scansPerPage}`, {
+                        headers: {
+                            'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                        }
+                    });
+
+                    if (resp.status === 401) {
+                        const refreshed = await refreshToken();
+                        if (refreshed) {
+                            resp = await fetch(`/api/scan_history/?type=${type}&page=${page}&limit=${scansPerPage}`, {
+                                headers: {
+                                    'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                                }
+                            });
+                        } else {
+                            alert('Session expirée. Veuillez vous reconnecter.');
+                            window.location.href = '/login';
+                            return;
+                        }
+                    }
+
+                    if (!resp.ok) {
+                        throw new Error(`Erreur HTTP ${resp.status}`);
+                    }
+
+                    const data = await resp.json();
+                    allData = allData.concat(data.scans);
+                    hasMore = page < data.pages;
+                    page++;
+                }
+
+                // Stocker les scans dans le cache
+                allScans[type] = allData;
+
+                // Filtrer les scans par recherche
+                const filteredScans = searchInput
+                    ? allScans[type].filter(scan => (scan.ip || scan.url).toLowerCase().includes(searchInput))
+                    : allScans[type];
+
+                // Regrouper les scans par IP/URL
+                const groupedScans = {};
+                filteredScans.forEach(scan => {
+                    const key = scan.ip || scan.url;
+                    if (!groupedScans[key]) {
+                        groupedScans[key] = {
+                            scans: [],
+                            latestDate: scan.date_scan
+                        };
+                    }
+                    groupedScans[key].scans.push(scan);
+                    if (scan.date_scan && new Date(scan.date_scan) > new Date(groupedScans[key].latestDate)) {
+                        groupedScans[key].latestDate = scan.date_scan;
+                    }
+                });
+
+                // Paginer les résultats groupés
+                const groupedKeys = Object.keys(groupedScans);
+                const totalPages = Math.ceil(groupedKeys.length / scansPerPage);
+                const start = (currentPage[type] - 1) * scansPerPage;
+                const paginatedKeys = groupedKeys.slice(start, start + scansPerPage);
+
+                let html = `<h3>Historique ${type.toUpperCase()}</h3>`;
+                if (paginatedKeys.length === 0) {
+                    html += `<p>Aucun résultat trouvé.</p>`;
+                } else {
+                    html += `<table><tr><th>Date</th><th>${type === 'nmap' ? 'IP' : 'URL'}</th><th>Action</th></tr>`;
+                    paginatedKeys.forEach(key => {
+                        const scans = groupedScans[key].scans;
+                        const latestDate = groupedScans[key].latestDate;
+                        const formattedDate = latestDate && !isNaN(new Date(latestDate)) 
+                            ? new Date(latestDate).toLocaleString('fr-FR') 
+                            : 'Date non disponible';
+                        html += `<tr class="scan-row" onclick="toggleDetails('${type}', '${key.replace(/'/g, "\\'")}')">
+                            <td>${formattedDate}</td>
+                            <td>${key}</td>
+                            <td><button onclick="deleteScanGroup('${type}', '${key.replace(/'/g, "\\'")}'); event.stopPropagation();">Supprimer</button></td>
+                        </tr>`;
+                        html += `<tr id="${type}-${key.replace(/[^a-zA-Z0-9]/g, '-')}-details" class="scan-details"><td colspan="3"><div>`;
+                        if (type === 'whatweb') {
+                            html += `<ul>`;
+                            scans.forEach(scan => {
+                                console.log(`WhatWeb result for ${key}:`, scan.result);
+                                const results = scan.result ? scan.result.split(',').map(item => item.trim()).filter(item => item) : [];
+                                results.forEach(result => {
+                                    html += `<li>${result}</li>`;
+                                });
+                            });
+                            html += `</ul>`;
+                        } else {
+                            html += `<ul>`;
+                            scans.forEach(scan => {
+                                if (type === 'nmap') {
+                                    html += `<li>Port ${scan.port}/${scan.protocol} - ${scan.state} - Service: ${scan.service}</li>`;
+                                } else if (type === 'zap') {
+                                    html += `<p><strong>${scan.alert}</strong> - Risque: ${scan.risk} - ${scan.description}</p>`;
+                                }
+                            });
+                            html += `</ul>`;
+                        }
+                        html += `</div></td></tr>`;
+                    });
+                    html += `</table>`;
+                }
+                html += `<div class="pagination">
+                    <button onclick="previousPage('${type}')">Précédent</button>
+                    <span>Page ${currentPage[type]} / ${totalPages}</span>
+                    <button onclick="nextPage('${type}', ${totalPages})">Suivant</button>
+                </div>`;
+                resultsDiv.innerHTML = html;
+                loadingDiv.style.display = 'none';
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultsDiv.innerHTML = `<p class="error">Erreur: ${error.message}</p>`;
+            }
+        }
+
+        function toggleDetails(type, key) {
+            const detailsRow = document.getElementById(`${type}-${key.replace(/[^a-zA-Z0-9]/g, '-')}-details`);
+            detailsRow.style.display = detailsRow.style.display === 'table-row' ? 'none' : 'table-row';
+        }
+
+        async function deleteScanGroup(type, key) {
+            try {
+                let resp = await fetch(`/api/delete_scan/?type=${type}&${type === 'nmap' ? 'ip' : 'url'}=${encodeURIComponent(key)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                    }
+                });
+
+                if (resp.status === 401) {
+                    const refreshed = await refreshToken();
+                    if (refreshed) {
+                        resp = await fetch(`/api/delete_scan/?type=${type}&${type === 'nmap' ? 'ip' : 'url'}=${encodeURIComponent(key)}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                            }
+                        });
+                    } else {
+                        alert('Session expirée. Veuillez vous reconnecter.');
+                        window.location.href = '/login';
+                        return;
+                    }
+                }
+
+                if (!resp.ok) {
+                    throw new Error(`Erreur HTTP ${resp.status}`);
+                }
+
+                const data = await resp.json();
+                if (data.message) {
+                    currentPage[type] = 1; // Réinitialiser la page après suppression
+                    fetchScanHistory(type);
+                }
+            } catch (error) {
+                document.getElementById(`${type}History`).innerHTML = `<p class="error">Erreur: ${error.message}</p>`;
+            }
+        }
+
+        function searchScans(type) {
+            currentPage[type] = 1; // Réinitialiser la page lors de la recherche
+            fetchScanHistory(type);
+        }
+
+        function previousPage(type) {
+            if (currentPage[type] > 1) {
+                currentPage[type]--;
+                fetchScanHistory(type);
+            }
+        }
+
+        function nextPage(type, totalPages) {
+            if (currentPage[type] < totalPages) {
+                currentPage[type]++;
+                fetchScanHistory(type);
+            }
+        }
+
+        // Charger l'historique au démarrage
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchScanHistory('nmap');
+            fetchScanHistory('whatweb');
+            fetchScanHistory('zap');
+        });
     </script>
 </body>
 </html>
